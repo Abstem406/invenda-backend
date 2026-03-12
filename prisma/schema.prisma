@@ -1,0 +1,70 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Category {
+  id       String    @id @default(uuid())
+  name     String
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id         String   @id @default(uuid())
+  name       String
+  status     Int // 1 = Active, 2 = Inactive
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  stock      Int
+  prices     Json // type Prices
+
+  sales SaleItem[]
+
+  @@map("products")
+}
+
+model ExchangeRates {
+  id     String @id @default("singleton")
+  cop    Float
+  bcv    Float
+  copUsd Float
+
+  @@map("exchange_rates")
+}
+
+model Sale {
+  id             String     @id @default(uuid())
+  date           DateTime   @default(now())
+  items          SaleItem[]
+  receivedTotals Json // type { usdFisico, usdTarjeta, cop, ves }
+  status         String // "pagado" | "fiado" | "debiendo"
+
+  @@map("sales")
+}
+
+model SaleItem {
+  id         String  @id @default(uuid())
+  saleId     String
+  sale       Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product @relation(fields: [productId], references: [id])
+  quantity   Int
+  unitPrice  Json // type Prices
+  totalPrice Json // type Prices
+  payments   Json // type { usdFisico, usdTarjeta, cop, ves }
+
+  @@map("sale_items")
+}
