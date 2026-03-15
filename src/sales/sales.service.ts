@@ -1,17 +1,42 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
+import { PaginatedResult } from '../common/interfaces/paginated-result.interface';
+import { Sale, Prisma } from '../../generated/prisma/client';
 
 @Injectable()
 export class SalesService {
     constructor(private prisma: PrismaService) { }
 
-    async findAll() {
-        return this.prisma.sale.findMany({
-            include: {
-                items: true,
+    async findAll(paginationDto: PaginationDto): Promise<PaginatedResult<Sale>> {
+        const { page = 1, limit = 10, search } = paginationDto;
+        const skip = (page - 1) * limit;
+
+        const where: Prisma.SaleWhereInput = search
+            ? { status: { contains: search, mode: 'insensitive' } }
+            : {};
+
+        const [data, total] = await Promise.all([
+            this.prisma.sale.findMany({
+                where,
+                skip,
+                take: limit,
+                include: { items: true },
+                orderBy: { date: 'desc' },
+            }),
+            this.prisma.sale.count({ where }),
+        ]);
+
+        return {
+            data,
+            meta: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
             },
-        });
+        };
     }
 
     async create(createSaleDto: CreateSaleDto) {

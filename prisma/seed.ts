@@ -1,94 +1,104 @@
-import 'dotenv/config';
 import { PrismaClient } from '../generated/prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
+import * as bcrypt from 'bcrypt';
 import { Pool } from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-    console.log('Empezando a poblar la base de datos (seeding)...');
+    // ── Users ──────────────────────────────────────────────
+    const adminPassword = 'password123';
+    const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
-    // Limpiar datos existentes (opcional pero recomendado para desarrollo)
-    await prisma.saleItem.deleteMany();
-    await prisma.sale.deleteMany();
-    await prisma.product.deleteMany();
-    await prisma.category.deleteMany();
-    await prisma.exchangeRates.deleteMany();
-
-    // 1. Crear Exchange Rates Iniciales
-    await prisma.exchangeRates.create({
-        data: {
-            id: 'singleton',
-            cop: 5,
-            bcv: 435,
-            copUsd: 3754,
-        },
+    const admin = await prisma.user.upsert({
+        where: { email: 'admin@invenda.com' },
+        update: { role: 'ADMIN' },
+        create: { email: 'admin@invenda.com', name: 'Admin', password: hashedPassword, role: 'ADMIN' },
     });
-    console.log('✅ Exchange Rates creados');
 
-    // 2. Crear Categorías
-    const snacksCategory = await prisma.category.create({
-        data: { name: 'Snacks' },
+    const cajero = await prisma.user.upsert({
+        where: { email: 'cajero@invenda.com' },
+        update: { role: 'CAJERO' },
+        create: { email: 'cajero@invenda.com', name: 'Cajero', password: hashedPassword, role: 'CAJERO' },
     });
-    const drinksCategory = await prisma.category.create({
-        data: { name: 'Bebidas' },
-    });
-    console.log('✅ Categorías creadas');
 
-    // 3. Crear Productos de Prueba
-    await prisma.product.createMany({
-        data: [
-            {
-                name: 'Doritos Queso 150g',
-                status: 1, // 1 = Activo
-                categoryId: snacksCategory.id,
-                stock: 50,
-                prices: {
-                    usdTarjeta: 1.5,
-                    usdFisico: 1.2,
-                    cop: 6000,
-                    ves: 65.25,
-                    exchangeType: 'usd',
-                },
-            },
-            {
-                name: 'Coca-Cola 2L',
+    // ── Exchange Rates ────────────────────────────────────
+    await prisma.exchangeRates.upsert({
+        where: { id: 'singleton' },
+        update: {},
+        create: { id: 'singleton', cop: 4200, bcv: 78.50, copUsd: 0.000238 },
+    });
+
+    // ── Categories ────────────────────────────────────────
+    const categoriesData = [
+        { name: 'Bebidas' },
+        { name: 'Snacks' },
+        { name: 'Lácteos' },
+        { name: 'Limpieza' },
+        { name: 'Cuidado Personal' },
+    ];
+
+    const categories: Record<string, string> = {};
+    for (const cat of categoriesData) {
+        const created = await prisma.category.create({ data: cat });
+        categories[cat.name] = created.id;
+    }
+
+    // ── Products (15 items) ───────────────────────────────
+    const productsData = [
+        { name: 'Coca-Cola 500ml', category: 'Bebidas', stock: 48, usd: 1.50 },
+        { name: 'Pepsi 500ml', category: 'Bebidas', stock: 36, usd: 1.40 },
+        { name: 'Agua Mineral 1L', category: 'Bebidas', stock: 60, usd: 0.80 },
+        { name: 'Jugo de Naranja 1L', category: 'Bebidas', stock: 24, usd: 2.50 },
+        { name: 'Doritos 150g', category: 'Snacks', stock: 30, usd: 2.00 },
+        { name: 'Oreo 120g', category: 'Snacks', stock: 25, usd: 1.80 },
+        { name: 'Ruffles 130g', category: 'Snacks', stock: 20, usd: 2.10 },
+        { name: 'Leche Entera 1L', category: 'Lácteos', stock: 40, usd: 1.20 },
+        { name: 'Yogurt Natural 500g', category: 'Lácteos', stock: 18, usd: 1.50 },
+        { name: 'Queso Blanco 500g', category: 'Lácteos', stock: 12, usd: 3.50 },
+        { name: 'Detergente Líquido 1L', category: 'Limpieza', stock: 15, usd: 4.00 },
+        { name: 'Jabón en Barra x3', category: 'Limpieza', stock: 22, usd: 2.50 },
+        { name: 'Cloro 1L', category: 'Limpieza', stock: 30, usd: 1.00 },
+        { name: 'Shampoo 400ml', category: 'Cuidado Personal', stock: 16, usd: 3.80 },
+        { name: 'Pasta Dental 100ml', category: 'Cuidado Personal', stock: 28, usd: 2.20 },
+    ];
+
+    const cop = 4200;
+    const bcv = 78.50;
+
+    for (const p of productsData) {
+        await prisma.product.create({
+            data: {
+                name: p.name,
                 status: 1,
-                categoryId: drinksCategory.id,
-                stock: 30,
+                categoryId: categories[p.category],
+                stock: p.stock,
                 prices: {
-                    usdTarjeta: 2.0,
-                    usdFisico: 1.8,
-                    cop: 7500,
-                    ves: 87.0,
+                    usdTarjeta: p.usd,
+                    usdFisico: p.usd,
+                    cop: Math.round(p.usd * cop),
+                    ves: +(p.usd * bcv).toFixed(2),
                     exchangeType: 'usd',
+                    isCustomVes: false,
                 },
             },
-            {
-                name: 'Chocolate Savory',
-                status: 2, // 2 = Inactivo
-                categoryId: snacksCategory.id,
-                stock: 0,
-                prices: {
-                    usdTarjeta: 0.8,
-                    usdFisico: 0.7,
-                    cop: 3000,
-                    ves: 34.8,
-                    exchangeType: 'cop',
-                },
-            },
-        ],
-    });
-    console.log('✅ Productos creados');
+        });
+    }
 
-    console.log('🎉 Seeding completado exitosamente.');
+    console.log('Seed completed:');
+    console.log(`  Users:    Admin (${admin.email}) + Cajero (${cajero.email}) | Password: ${adminPassword}`);
+    console.log(`  Categories: ${categoriesData.length}`);
+    console.log(`  Products:   ${productsData.length}`);
+    console.log(`  Exchange Rates: COP=${cop} | BCV=${bcv}`);
 }
 
 main()
     .catch((e) => {
-        console.error('Error durante el seeding:', e);
+        console.error(e);
         process.exit(1);
     })
     .finally(async () => {

@@ -5,9 +5,11 @@ import { CategoriesModule } from './categories/categories.module';
 import { ProductsModule } from './products/products.module';
 import { ExchangeRatesModule } from './exchange-rates/exchange-rates.module';
 import { SalesModule } from './sales/sales.module';
+import { UsersModule } from './users/users.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
-    imports: [ConfigModule.forRoot(), PrismaModule, CategoriesModule, ProductsModule, ExchangeRatesModule, SalesModule],
+    imports: [ConfigModule.forRoot(), PrismaModule, AuthModule, CategoriesModule, ProductsModule, ExchangeRatesModule, SalesModule, UsersModule],
     controllers: [],
     providers: [],
 })
