@@ -77,13 +77,15 @@ async function main() {
                 status: 1,
                 categoryId: categories[p.category],
                 stock: p.stock,
-                prices: {
-                    usdTarjeta: p.usd,
-                    usdFisico: p.usd,
-                    cop: Math.round(p.usd * cop),
-                    ves: +(p.usd * bcv).toFixed(2),
-                    exchangeType: 'usd',
-                    isCustomVes: false,
+                price: {
+                    create: {
+                        usdTarjeta: p.usd,
+                        usdFisico: p.usd,
+                        cop: Math.round(p.usd * cop),
+                        ves: +(p.usd * bcv).toFixed(2),
+                        exchangeType: 'usd',
+                        isCustomVes: false,
+                    },
                 },
             },
         });

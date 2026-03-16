@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -7,11 +7,18 @@ import { PaginationDto } from '../common/dto/pagination.dto';
 import { PaginatedResult } from '../common/interfaces/paginated-result.interface';
 import { Product, Prisma } from '../../generated/prisma/client';
 
+const productInclude = {
+    category: true,
+    price: true,
+};
+
 @Injectable()
 export class ProductsService {
     constructor(private prisma: PrismaService) { }
 
-    async findAll(paginationDto: PaginationDto): Promise<PaginatedResult<Product>> {
+    async findAll(
+        paginationDto: PaginationDto,
+    ): Promise<PaginatedResult<Product>> {
         const { page = 1, limit = 10, search } = paginationDto;
         const skip = (page - 1) * limit;
 
@@ -24,7 +31,7 @@ export class ProductsService {
                 where,
                 skip,
                 take: limit,
-                include: { category: true },
+                include: productInclude,
             }),
             this.prisma.product.count({ where }),
         ]);
@@ -41,43 +48,68 @@ export class ProductsService {
     }
 
     async create(createProductDto: CreateProductDto) {
-        const { prices, ...rest } = createProductDto;
+        const { price, ...rest } = createProductDto;
         return this.prisma.product.create({
             data: {
                 ...rest,
-                prices: prices as any,
+                price: {
+                    create: price,
+                },
             },
+            include: productInclude,
         });
     }
 
     async update(id: string, updateProductDto: UpdateProductDto) {
-        const { prices, ...rest } = updateProductDto;
+        const { price, ...rest } = updateProductDto;
 
-        const data: any = {};
+        // Check product exists
+        const existing = await this.prisma.product.findUnique({ where: { id } });
+        if (!existing) throw new NotFoundException('Product not found');
+
+        const data: Prisma.ProductUpdateInput = {};
         if (rest.name !== undefined) data.name = rest.name;
         if (rest.status !== undefined) data.status = rest.status;
-        if (rest.categoryId !== undefined) data.categoryId = rest.categoryId;
+        if (rest.categoryId !== undefined)
+            data.category = { connect: { id: rest.categoryId } };
         if (rest.stock !== undefined) data.stock = rest.stock;
-        if (prices !== undefined) data.prices = prices;
+        if (price !== undefined) {
+            data.price = {
+                upsert: {
+                    create: price,
+                    update: price,
+                },
+            };
+        }
 
         return this.prisma.product.update({
             where: { id },
             data,
+            include: productInclude,
         });
     }
 
     async remove(id: string) {
-        return this.prisma.product.delete({
-            where: { id },
-        });
+        const existing = await this.prisma.product.findUnique({ where: { id } });
+        if (!existing) throw new NotFoundException('Product not found');
+        return this.prisma.product.delete({ where: { id } });
     }
 
     async updatePrices(id: string, updatePricesDto: UpdatePricesDto) {
+        const existing = await this.prisma.product.findUnique({ where: { id } });
+        if (!existing) throw new NotFoundException('Product not found');
+
         return this.prisma.product.update({
             where: { id },
             data: {
-                prices: updatePricesDto as any,
+                price: {
+                    upsert: {
+                        create: updatePricesDto,
+                        update: updatePricesDto,
+                    },
+                },
             },
+            include: productInclude,
         });
     }
 }

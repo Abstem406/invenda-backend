@@ -104,15 +104,17 @@ A continuación, se detallan los endpoints expuestos por el backend. Todos los e
       "status": 1,
       "categoryId": "uuid",
       "stock": 48,
-      "prices": {
+      "category": { "id": "uuid", "name": "Bebidas" },
+      "price": {
+        "id": "uuid",
         "usdTarjeta": 1.5,
         "usdFisico": 1.5,
         "cop": 6300,
         "ves": 117.75,
         "exchangeType": "usd",
-        "isCustomVes": false
-      },
-      "category": { "id": "uuid", "name": "Bebidas" }
+        "isCustomVes": false,
+        "productId": "uuid"
+      }
     }
   ],
   "meta": { "total": 15, "page": 1, "limit": 10, "totalPages": 2 }
