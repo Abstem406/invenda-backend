@@ -46,7 +46,11 @@ export class AuthController {
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         });
 
-        return { message: 'Login successful', user: req.user };
+        return {
+            message: 'Login successful',
+            user: req.user,
+            mustChangePassword: (req.user as any)?.mustChangePassword ?? false,
+        };
     }
 
     @UseGuards(JwtRefreshGuard)

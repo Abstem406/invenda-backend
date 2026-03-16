@@ -17,13 +17,13 @@ async function main() {
     const admin = await prisma.user.upsert({
         where: { email: 'admin@invenda.com' },
         update: { role: 'ADMIN' },
-        create: { email: 'admin@invenda.com', name: 'Admin', password: hashedPassword, role: 'ADMIN' },
+        create: { email: 'admin@invenda.com', name: 'Admin', password: hashedPassword, role: 'ADMIN', mustChangePassword: false },
     });
 
     const cajero = await prisma.user.upsert({
         where: { email: 'cajero@invenda.com' },
         update: { role: 'CAJERO' },
-        create: { email: 'cajero@invenda.com', name: 'Cajero', password: hashedPassword, role: 'CAJERO' },
+        create: { email: 'cajero@invenda.com', name: 'Cajero', password: hashedPassword, role: 'CAJERO', mustChangePassword: false },
     });
 
     // ── Exchange Rates ────────────────────────────────────
