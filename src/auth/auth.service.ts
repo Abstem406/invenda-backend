@@ -80,8 +80,17 @@ export class AuthService {
         };
     }
 
-    async logout(userId: string) {
-        // Remove the refresh token from the database
-        await this.usersService.updateRefreshToken(userId, null);
+    async resilientLogout(accessToken: string | undefined) {
+        if (!accessToken) return;
+        try {
+            const payload = await this.jwtService.verifyAsync(accessToken, {
+                secret: process.env.JWT_ACCESS_SECRET || 'fallback_access_secret',
+            });
+            if (payload && payload.sub) {
+                await this.usersService.updateRefreshToken(payload.sub, null);
+            }
+        } catch (e) {
+            // Ignorar errores de verificación de token
+        }
     }
 }

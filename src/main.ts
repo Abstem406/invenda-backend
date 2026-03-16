@@ -27,7 +27,7 @@ async function bootstrap() {
     .setDescription('The Invenda API description')
     .setVersion('1.0')
     .addTag('invenda')
-    .addCookieAuth('access_token') // <- THIS IS THE MAGIC LINE
+    .addCookieAuth('access_token')
     .build();
 
   const documentFactory = () => SwaggerModule.createDocument(app, config);

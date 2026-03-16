@@ -86,20 +86,31 @@ export class AuthController {
         return { message: 'Tokens refreshed successfully' };
     }
 
-    @UseGuards(JwtAuthGuard)
     @Post('logout')
     @HttpCode(HttpStatus.OK)
-    @ApiCookieAuth()
-    @ApiOperation({ summary: 'Logout and clear cookies' })
-    async logout(@Req() req: Request & { user: any }, @Res({ passthrough: true }) res: Response) {
-        // Delete refresh token from DB
-        await this.authService.logout(req.user.userId);
+    @ApiOperation({ summary: 'Logout and clear cookies without requiring valid JWT' })
+    async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+        // Intentar borrar refresh token de la BD usando el token de la cookie
+        const token = req.cookies?.['access_token'];
+        if (token) {
+            await this.authService.resilientLogout(token);
+        }
 
-        // Clear cookies
-        res.clearCookie('access_token');
-        res.clearCookie('refresh_token');
+        // Clear access_token cookie
+        res.clearCookie('access_token', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+        });
 
-        return { message: 'Logout successful' };
+        // Clear refresh_token cookie
+        res.clearCookie('refresh_token', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+        });
+
+        return { message: 'Logout successful, session destroyed' };
     }
 
     @UseGuards(JwtAuthGuard)
