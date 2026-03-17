@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { UpdatePricesDto } from './dto/update-prices.dto';
-import { PaginationDto } from '../common/dto/pagination.dto';
+import { FindProductsDto } from './dto/find-products.dto';
 import { PaginatedResult } from '../common/interfaces/paginated-result.interface';
 import { Product, Prisma } from '../../generated/prisma/client';
 
@@ -17,14 +17,18 @@ export class ProductsService {
     constructor(private prisma: PrismaService) { }
 
     async findAll(
-        paginationDto: PaginationDto,
+        findProductsDto: FindProductsDto,
     ): Promise<PaginatedResult<Product>> {
-        const { page = 1, limit = 10, search } = paginationDto;
+        const { page = 1, limit = 10, search, hasPrice } = findProductsDto;
         const skip = (page - 1) * limit;
 
         const where: Prisma.ProductWhereInput = search
             ? { name: { contains: search, mode: 'insensitive' } }
             : {};
+
+        if (hasPrice !== undefined) {
+            where.price = hasPrice ? { isNot: null } : { is: null };
+        }
 
         const [data, total] = await Promise.all([
             this.prisma.product.findMany({
@@ -52,9 +56,7 @@ export class ProductsService {
         return this.prisma.product.create({
             data: {
                 ...rest,
-                price: {
-                    create: price,
-                },
+                ...(price ? { price: { create: price } } : {}),
             },
             include: productInclude,
         });

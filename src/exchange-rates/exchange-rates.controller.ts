@@ -20,7 +20,7 @@ export class ExchangeRatesController {
     }
 
     @Put()
-    @Roles('ADMIN')
+    @Roles('ADMIN', 'CAJERO')
     @ApiOperation({ summary: 'Update global exchange rates' })
     updateRates(@Body() updateDto: ExchangeRatesDto) {
         return this.exchangeRatesService.updateRates(updateDto);

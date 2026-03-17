@@ -1,8 +1,11 @@
-import { Type } from 'class-transformer';
-import { IsString, IsNumber, IsOptional, IsBoolean, ValidateNested } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsBoolean } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export class PricesDto {
+export class CreateProductPriceDto {
+    @ApiProperty({ description: 'ID of the product to assign prices to' })
+    @IsString()
+    productId: string;
+
     @ApiProperty()
     @IsNumber()
     usdTarjeta: number;
@@ -42,28 +45,4 @@ export class PricesDto {
     @IsBoolean()
     @IsOptional()
     isCustomVes?: boolean;
-}
-
-export class CreateProductDto {
-    @ApiProperty()
-    @IsString()
-    name: string;
-
-    @ApiProperty({ enum: [1, 2] })
-    @IsNumber()
-    status: 1 | 2;
-
-    @ApiProperty()
-    @IsString()
-    categoryId: string;
-
-    @ApiProperty()
-    @IsNumber()
-    stock: number;
-
-    @ApiPropertyOptional({ type: () => PricesDto })
-    @ValidateNested()
-    @Type(() => PricesDto)
-    @IsOptional()
-    price?: PricesDto;
 }

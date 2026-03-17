@@ -20,23 +20,27 @@ enum Role {
 }
 
 model User {
-  id                 String   @id @default(uuid())
-  email              String   @unique
+  id                 String    @id @default(uuid())
+  email              String    @unique
   password           String
   name               String?
-  role               Role     @default(CAJERO)
+  role               Role      @default(CAJERO)
   refreshToken       String?
-  mustChangePassword Boolean  @default(true)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  mustChangePassword Boolean   @default(true)
+  deletedAt          DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   @@map("users")
 }
 
 model Category {
-  id       String    @id @default(uuid())
-  name     String
-  products Product[]
+  id        String    @id @default(uuid())
+  name      String
+  products  Product[]
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@map("categories")
 }
@@ -49,31 +53,41 @@ model Product {
   category   Category      @relation(fields: [categoryId], references: [id])
   stock      Int
   price      ProductPrice?
-
-  sales SaleItem[]
+  sales      SaleItem[]
+  deletedAt  DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 
   @@map("products")
 }
 
 model ProductPrice {
-  id           String  @id @default(uuid())
-  productId    String  @unique
-  product      Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  usdTarjeta   Float
-  usdFisico    Float
-  cop          Float
-  ves          Float
-  exchangeType String // "usd" | "cop"
-  isCustomVes  Boolean @default(false)
+  id                 String    @id @default(uuid())
+  productId          String    @unique
+  product            Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  usdTarjeta         Float
+  usdFisico          Float
+  cop                Float
+  ves                Float
+  exchangeType       String // "usd" | "cop"
+  isCustomUsdTarjeta Boolean   @default(false)
+  isCustomUsdFisico  Boolean   @default(false)
+  isCustomCop        Boolean   @default(false)
+  isCustomVes        Boolean   @default(false)
+  deletedAt          DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   @@map("product_prices")
 }
 
 model ExchangeRates {
-  id     String @id @default("singleton")
-  cop    Float
-  bcv    Float
-  copUsd Float
+  id        String   @id @default("singleton")
+  cop       Float
+  bcv       Float
+  copUsd    Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("exchange_rates")
 }
@@ -84,20 +98,26 @@ model Sale {
   items          SaleItem[]
   receivedTotals Json // type { usdFisico, usdTarjeta, cop, ves }
   status         String // "pagado" | "fiado" | "debiendo"
+  deletedAt      DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
   @@map("sales")
 }
 
 model SaleItem {
-  id         String  @id @default(uuid())
+  id         String    @id @default(uuid())
   saleId     String
-  sale       Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  sale       Sale      @relation(fields: [saleId], references: [id], onDelete: Cascade)
   productId  String
-  product    Product @relation(fields: [productId], references: [id])
+  product    Product   @relation(fields: [productId], references: [id])
   quantity   Int
   unitPrice  Json // type Prices
   totalPrice Json // type Prices
   payments   Json // type { usdFisico, usdTarjeta, cop, ves }
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   @@map("sale_items")
 }

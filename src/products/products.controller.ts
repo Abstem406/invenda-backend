@@ -5,6 +5,7 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { UpdatePricesDto } from './dto/update-prices.dto';
 import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
 import { PaginationDto } from '../common/dto/pagination.dto';
+import { FindProductsDto } from './dto/find-products.dto';
 import { Query } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -19,8 +20,8 @@ export class ProductsController {
 
     @Get()
     @ApiOperation({ summary: 'Get all products with pagination and search' })
-    findAll(@Query() paginationDto: PaginationDto) {
-        return this.productsService.findAll(paginationDto);
+    findAll(@Query() findProductsDto: FindProductsDto) {
+        return this.productsService.findAll(findProductsDto);
     }
 
     @Post()

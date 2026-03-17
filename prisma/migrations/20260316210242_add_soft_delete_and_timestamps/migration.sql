@@ -1,0 +1,35 @@
+-- Add soft delete and timestamps to all tables
+-- For updatedAt columns, we set a default of CURRENT_TIMESTAMP for existing rows,
+-- then Prisma will manage it via @updatedAt at the application level.
+
+-- AlterTable: categories
+ALTER TABLE "categories" ADD COLUMN "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN "deletedAt" TIMESTAMP(3),
+ADD COLUMN "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+-- AlterTable: exchange_rates
+ALTER TABLE "exchange_rates" ADD COLUMN "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+-- AlterTable: product_prices
+ALTER TABLE "product_prices" ADD COLUMN "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN "deletedAt" TIMESTAMP(3),
+ADD COLUMN "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+-- AlterTable: products
+ALTER TABLE "products" ADD COLUMN "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN "deletedAt" TIMESTAMP(3),
+ADD COLUMN "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+-- AlterTable: sale_items
+ALTER TABLE "sale_items" ADD COLUMN "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN "deletedAt" TIMESTAMP(3),
+ADD COLUMN "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+-- AlterTable: sales
+ALTER TABLE "sales" ADD COLUMN "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN "deletedAt" TIMESTAMP(3),
+ADD COLUMN "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+-- AlterTable: users
+ALTER TABLE "users" ADD COLUMN "deletedAt" TIMESTAMP(3);

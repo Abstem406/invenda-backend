@@ -26,13 +26,56 @@ export class ExchangeRatesService {
     }
 
     async updateRates(updateDto: ExchangeRatesDto) {
-        return this.prisma.exchangeRates.upsert({
-            where: { id: 'singleton' },
-            update: updateDto,
-            create: {
-                id: 'singleton',
-                ...updateDto,
-            },
+        return this.prisma.$transaction(async (tx) => {
+            const rates = await tx.exchangeRates.upsert({
+                where: { id: 'singleton' },
+                update: updateDto,
+                create: {
+                    id: 'singleton',
+                    ...updateDto,
+                },
+            });
+
+            // Update prices where base is USD
+            const productsUsdBase = await tx.productPrice.findMany({
+                where: { exchangeType: 'usd' }
+            });
+
+            for (const price of productsUsdBase) {
+                const dataToUpdate: any = {};
+                if (!price.isCustomCop) dataToUpdate.cop = price.usdFisico * rates.copUsd;
+                if (!price.isCustomVes) dataToUpdate.ves = price.usdFisico * rates.bcv;
+
+                if (Object.keys(dataToUpdate).length > 0) {
+                    await tx.productPrice.update({
+                        where: { id: price.id },
+                        data: dataToUpdate
+                    });
+                }
+            }
+
+            // Update prices where base is COP
+            const productsCopBase = await tx.productPrice.findMany({
+                where: { exchangeType: 'cop' }
+            });
+
+            for (const price of productsCopBase) {
+                const dataToUpdate: any = {};
+                const calculatedUsd = price.cop / rates.copUsd;
+
+                if (!price.isCustomUsdFisico) dataToUpdate.usdFisico = calculatedUsd;
+                if (!price.isCustomUsdTarjeta) dataToUpdate.usdTarjeta = calculatedUsd;
+                if (!price.isCustomVes) dataToUpdate.ves = calculatedUsd * rates.bcv;
+
+                if (Object.keys(dataToUpdate).length > 0) {
+                    await tx.productPrice.update({
+                        where: { id: price.id },
+                        data: dataToUpdate
+                    });
+                }
+            }
+
+            return rates;
         });
     }
 }

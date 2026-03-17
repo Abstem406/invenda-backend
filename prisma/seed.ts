@@ -30,7 +30,7 @@ async function main() {
     await prisma.exchangeRates.upsert({
         where: { id: 'singleton' },
         update: {},
-        create: { id: 'singleton', cop: 4200, bcv: 78.50, copUsd: 0.000238 },
+        create: { id: 'singleton', cop: 4200, bcv: 78.50, copUsd: 4000 },
     });
 
     // ── Categories ────────────────────────────────────────
@@ -91,11 +91,85 @@ async function main() {
         });
     }
 
+    // ── Mock Sales (Development only) ─────────────────────
+    // Check if the environment is not production to insert mock sales
+    if (process.env.NODE_ENV !== 'production') {
+        await seedMockSales();
+    }
+
     console.log('Seed completed:');
     console.log(`  Users:    Admin (${admin.email}) + Cajero (${cajero.email}) | Password: ${adminPassword}`);
     console.log(`  Categories: ${categoriesData.length}`);
     console.log(`  Products:   ${productsData.length}`);
     console.log(`  Exchange Rates: COP=${cop} | BCV=${bcv}`);
+}
+
+async function seedMockSales() {
+    console.log('Seeding mock sales for the last 15 days...');
+    const products = await prisma.product.findMany({ include: { price: true } });
+    if (products.length === 0) return;
+
+    const today = new Date();
+
+    // Create sales for the last 15 days
+    for (let i = 0; i < 15; i++) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+
+        // Randomly generate between 2 to 5 sales per day
+        const salesCount = Math.floor(Math.random() * 4) + 2;
+
+        for (let j = 0; j < salesCount; j++) {
+            const saleDate = new Date(date);
+            // Random time between 8:00 AM and 5:59 PM
+            saleDate.setHours(Math.floor(Math.random() * 10) + 8);
+            saleDate.setMinutes(Math.floor(Math.random() * 60));
+
+            // Select 1 to 3 random products for the sale
+            const itemsCount = Math.floor(Math.random() * 3) + 1;
+            const shuffled = [...products].sort(() => 0.5 - Math.random());
+            const selectedProducts = shuffled.slice(0, itemsCount);
+
+            let totalUsdFisico = 0;
+            const itemsData = selectedProducts.map(p => {
+                const quantity = Math.floor(Math.random() * 3) + 1;
+                const unitPrice = {
+                    usdTarjeta: p.price?.usdTarjeta || 0,
+                    usdFisico: p.price?.usdFisico || 0,
+                    cop: p.price?.cop || 0,
+                    ves: p.price?.ves || 0,
+                };
+                const totalPrice = {
+                    usdTarjeta: +(unitPrice.usdTarjeta * quantity).toFixed(2),
+                    usdFisico: +(unitPrice.usdFisico * quantity).toFixed(2),
+                    cop: +(unitPrice.cop * quantity).toFixed(2),
+                    ves: +(unitPrice.ves * quantity).toFixed(2),
+                };
+
+                totalUsdFisico += totalPrice.usdFisico;
+
+                return {
+                    productId: p.id,
+                    quantity,
+                    unitPrice,
+                    totalPrice,
+                    payments: { usdFisico: totalPrice.usdFisico, usdTarjeta: 0, cop: 0, ves: 0 },
+                };
+            });
+
+            await prisma.sale.create({
+                data: {
+                    date: saleDate,
+                    status: 'pagado',
+                    receivedTotals: { usdFisico: +(totalUsdFisico).toFixed(2), usdTarjeta: 0, cop: 0, ves: 0 },
+                    items: {
+                        create: itemsData,
+                    },
+                },
+            });
+        }
+    }
+    console.log('Mock sales inserted successfully.');
 }
 
 main()

@@ -120,7 +120,38 @@ El frontend envía actualizaciones parciales. Los campos que puede enviar:
 
 ---
 
-## 3. Exchange Rates
+## 3. Product Prices
+
+> Consumido por: **Prices** ([prices-table.tsx](file:///home/abstem/Documents/dev/invenda/components/prices/prices-table.tsx))
+
+| Método | Ruta | Request Body | Response | Notas |
+|--------|------|-------------|----------|-------|
+| `GET` | `/product-prices` | — | `ProductPrice[]` | Lista todos los precios con info del producto |
+| `GET` | `/product-prices/:productId` | — | `ProductPrice` | Precio de un producto específico |
+| `POST` | `/product-prices` | `CreateProductPriceDto` | `ProductPrice` | Crea precio para producto sin precio |
+| `PATCH` | `/product-prices/:productId` | `Partial<PriceFields>` | `ProductPrice` | Actualiza precio existente |
+| `DELETE` | `/product-prices/:productId` | — | `void` (204) | Elimina registro de precio |
+
+### CreateProductPriceDto
+
+```typescript
+{
+    productId: string;
+    usdTarjeta: number;
+    usdFisico: number;
+    cop: number;
+    ves: number;
+    exchangeType: "usd" | "cop";
+    isCustomUsdTarjeta?: boolean;
+    isCustomUsdFisico?: boolean;
+    isCustomCop?: boolean;
+    isCustomVes?: boolean;
+}
+```
+
+---
+
+## 4. Exchange Rates
 
 > Consumido por: **Prices** ([prices-table.tsx](file:///home/abstem/Documents/dev/invenda/components/prices/prices-table.tsx)) y **Sales** ([sales-table.tsx](file:///home/abstem/Documents/dev/invenda/components/sales/sales-table.tsx))
 
@@ -144,7 +175,7 @@ El frontend envía actualizaciones parciales. Los campos que puede enviar:
 
 ---
 
-## 4. Sales
+## 5. Sales
 
 > Consumido por: **Sales** ([sales-table.tsx](file:///home/abstem/Documents/dev/invenda/components/sales/sales-table.tsx))
 
@@ -201,11 +232,12 @@ graph LR
     end
 
     subgraph "/prices"
-        D["PricesTable"] -->|GET| P2["/products"]
-        D -->|GET| C2["/categories"]
+        D["PricesTable"] -->|GET| PP2["/product-prices"]
+        D -->|POST| PP2
+        D -->|PATCH| PP2
+        D -->|DELETE| PP2
         D -->|GET| E["/exchange-rates"]
         D -->|PUT| E
-        D -->|PATCH| PP["/products/:id/prices"]
     end
 
     subgraph "/sales"
@@ -218,7 +250,7 @@ graph LR
 
 ---
 
-## Resumen de Endpoints (12 total)
+## Resumen de Endpoints (18 total)
 
 | # | Método | Ruta | Módulo |
 |---|--------|------|--------|
@@ -231,7 +263,13 @@ graph LR
 | 7 | PATCH | `/products/:id` | Products |
 | 8 | DELETE | `/products/:id` | Products |
 | 9 | PATCH | `/products/:id/prices` | Products |
-| 10 | GET | `/exchange-rates` | Exchange Rates |
-| 11 | PUT | `/exchange-rates` | Exchange Rates |
-| 12 | GET | `/sales` | Sales |
-| 13 | POST | `/sales` | Sales |
+| 10 | GET | `/product-prices` | Product Prices |
+| 11 | GET | `/product-prices/:productId` | Product Prices |
+| 12 | POST | `/product-prices` | Product Prices |
+| 13 | PATCH | `/product-prices/:productId` | Product Prices |
+| 14 | DELETE | `/product-prices/:productId` | Product Prices |
+| 15 | GET | `/exchange-rates` | Exchange Rates |
+| 16 | PUT | `/exchange-rates` | Exchange Rates |
+| 17 | GET | `/sales` | Sales |
+| 18 | POST | `/sales` | Sales |
+

@@ -41,14 +41,30 @@ export class SalesService {
 
     async create(createSaleDto: CreateSaleDto) {
         return this.prisma.$transaction(async (tx) => {
+            // 0. Validate payments: non-fiado sales must have at least one payment > 0
+            if (createSaleDto.status !== 'fiado') {
+                const { usdFisico, usdTarjeta, cop, ves } = createSaleDto.receivedTotals;
+                const totalReceived = usdFisico + usdTarjeta + cop + ves;
+                if (totalReceived <= 0) {
+                    throw new BadRequestException(
+                        'Debe registrar un monto en al menos una divisa. Solo las ventas con estado "fiado" pueden tener montos en 0.',
+                    );
+                }
+            }
+
             // 1. Process each item and deduct stock
             for (const item of createSaleDto.items) {
                 const product = await tx.product.findUnique({
                     where: { id: item.productId },
+                    include: { price: true },
                 });
 
                 if (!product) {
                     throw new BadRequestException(`El producto con ID ${item.productId} no existe.`);
+                }
+
+                if (!product.price) {
+                    throw new BadRequestException(`El producto "${product.name}" no tiene un precio configurado. No se puede vender.`);
                 }
 
                 if (product.stock < item.quantity) {
