@@ -10,6 +10,11 @@ export class ProductPricesService {
     // Return all product prices with product name and category
     async findAll() {
         return this.prisma.productPrice.findMany({
+            where: {
+                product: {
+                    deletedAt: null,
+                },
+            },
             include: {
                 product: {
                     include: { category: true },
@@ -20,8 +25,13 @@ export class ProductPricesService {
 
     // Return the price record for a single product
     async findOne(productId: string) {
-        const price = await this.prisma.productPrice.findUnique({
-            where: { productId },
+        const price = await this.prisma.productPrice.findFirst({
+            where: {
+                productId,
+                product: {
+                    deletedAt: null,
+                },
+            },
             include: {
                 product: {
                     include: { category: true },
