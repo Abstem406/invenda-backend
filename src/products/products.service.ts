@@ -27,7 +27,17 @@ export class ProductsService {
             : {};
 
         if (hasPrice !== undefined) {
-            where.price = hasPrice ? { isNot: null } : { is: null };
+            if (hasPrice) {
+                // Requires an active price
+                where.price = { deletedAt: null } as any;
+            } else {
+                // Either no price or a soft-deleted price
+                where.OR = [
+                    ...(where.OR ? [where.OR as any] : []),
+                    { price: { is: null } },
+                    { price: { isNot: null, deletedAt: { not: null } } }
+                ] as any;
+            }
         }
 
         const [data, total] = await Promise.all([
@@ -40,8 +50,15 @@ export class ProductsService {
             this.prisma.product.count({ where }),
         ]);
 
+        const filteredData = data.map(product => {
+            if (product.price && (product.price as any).deletedAt) {
+                return { ...product, price: null };
+            }
+            return product;
+        });
+
         return {
-            data,
+            data: filteredData as unknown as Product[],
             meta: {
                 total,
                 page,
@@ -53,13 +70,18 @@ export class ProductsService {
 
     async create(createProductDto: CreateProductDto) {
         const { price, ...rest } = createProductDto;
-        return this.prisma.product.create({
+        const result = await this.prisma.product.create({
             data: {
                 ...rest,
                 ...(price ? { price: { create: price } } : {}),
             },
             include: productInclude,
         });
+
+        if (result.price && (result.price as any).deletedAt) {
+            result.price = null as any;
+        }
+        return result;
     }
 
     async update(id: string, updateProductDto: UpdateProductDto) {
@@ -84,11 +106,16 @@ export class ProductsService {
             };
         }
 
-        return this.prisma.product.update({
+        const result = await this.prisma.product.update({
             where: { id },
             data,
             include: productInclude,
         });
+
+        if (result.price && (result.price as any).deletedAt) {
+            result.price = null as any;
+        }
+        return result;
     }
 
     async remove(id: string) {
@@ -101,7 +128,7 @@ export class ProductsService {
         const existing = await this.prisma.product.findUnique({ where: { id } });
         if (!existing) throw new NotFoundException('Product not found');
 
-        return this.prisma.product.update({
+        const result = await this.prisma.product.update({
             where: { id },
             data: {
                 price: {
@@ -113,5 +140,10 @@ export class ProductsService {
             },
             include: productInclude,
         });
+
+        if (result.price && (result.price as any).deletedAt) {
+            result.price = null as any;
+        }
+        return result;
     }
 }

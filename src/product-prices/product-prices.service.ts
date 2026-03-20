@@ -24,10 +24,13 @@ export class ProductPricesService {
     }
 
     // Return the price record for a single product
-    async findOne(productId: string) {
+    async findOne(identifier: string) {
         const price = await this.prisma.productPrice.findFirst({
             where: {
-                productId,
+                OR: [
+                    { productId: identifier },
+                    { id: identifier }
+                ],
                 product: {
                     deletedAt: null,
                 },
@@ -38,7 +41,7 @@ export class ProductPricesService {
                 },
             },
         });
-        if (!price) throw new NotFoundException('Price not found for this product');
+        if (!price) throw new NotFoundException('Price not found');
         return price;
     }
 
@@ -48,12 +51,19 @@ export class ProductPricesService {
         const product = await this.prisma.product.findUnique({ where: { id: dto.productId } });
         if (!product) throw new NotFoundException('Product not found');
 
-        // Ensure no price already exists for this product
-        const existing = await this.prisma.productPrice.findUnique({ where: { productId: dto.productId } });
+        // Ensure no ACTIVE price already exists for this product
+        const existing = await this.prisma.productPrice.findFirst({ where: { productId: dto.productId } });
         if (existing) throw new ConflictException('Price already exists for this product. Use PATCH to update.');
 
-        return this.prisma.productPrice.create({
-            data: dto,
+        // Upsert allows us to restore a soft-deleted price if one exists,
+        // preventing the "duplicate key value violates unique constraint" error.
+        return this.prisma.productPrice.upsert({
+            where: { productId: dto.productId },
+            create: dto,
+            update: {
+                ...dto,
+                deletedAt: null,
+            },
             include: {
                 product: {
                     include: { category: true },
@@ -63,12 +73,14 @@ export class ProductPricesService {
     }
 
     // Update an existing price record
-    async update(productId: string, dto: UpdateProductPriceDto) {
-        const existing = await this.prisma.productPrice.findUnique({ where: { productId } });
-        if (!existing) throw new NotFoundException('Price not found for this product');
+    async update(identifier: string, dto: UpdateProductPriceDto) {
+        const existing = await this.prisma.productPrice.findFirst({
+            where: { OR: [{ productId: identifier }, { id: identifier }] }
+        });
+        if (!existing) throw new NotFoundException('Price not found');
 
         return this.prisma.productPrice.update({
-            where: { productId },
+            where: { id: existing.id },
             data: dto,
             include: {
                 product: {
@@ -79,10 +91,12 @@ export class ProductPricesService {
     }
 
     // Remove a price record
-    async remove(productId: string) {
-        const existing = await this.prisma.productPrice.findUnique({ where: { productId } });
-        if (!existing) throw new NotFoundException('Price not found for this product');
+    async remove(identifier: string) {
+        const existing = await this.prisma.productPrice.findFirst({
+            where: { OR: [{ productId: identifier }, { id: identifier }] }
+        });
+        if (!existing) throw new NotFoundException('Price not found');
 
-        return this.prisma.productPrice.delete({ where: { productId } });
+        return this.prisma.productPrice.delete({ where: { id: existing.id } });
     }
 }
