@@ -9,7 +9,25 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3001', // Explicit origin required when using credentials
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      // Allow requests from localhost and local network IPs / .local domains
+      const allowedPatterns = [
+        /^http:\/\/localhost(:\d+)?$/,
+        /^http:\/\/(.*)\.local(:\d+)?$/i,
+      ];
+
+      const customFrontendUrl = process.env.FRONTEND_URL;
+
+      if (
+        !origin ||
+        allowedPatterns.some((pattern) => pattern.test(origin)) ||
+        (customFrontendUrl && origin.toLowerCase() === customFrontendUrl.toLowerCase())
+      ) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
   });
 
