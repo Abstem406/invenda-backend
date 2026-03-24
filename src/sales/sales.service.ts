@@ -71,6 +71,23 @@ export class SalesService {
                     throw new BadRequestException(`Sin stock suficiente para el producto: ${product.name}`);
                 }
 
+                // Validate that unit prices match configured product prices
+                const configuredPrice = product.price as any;
+                const sentPrice = item.unitPrice;
+
+                const priceFields = ['usdTarjeta', 'usdFisico', 'cop', 'ves'] as const;
+                for (const field of priceFields) {
+                    if (
+                        typeof sentPrice[field] !== 'number' ||
+                        sentPrice[field] !== configuredPrice[field]
+                    ) {
+                        throw new BadRequestException(
+                            `El precio unitario "${field}" del producto "${product.name}" no coincide con el precio configurado. ` +
+                            `Esperado: ${configuredPrice[field]}, recibido: ${sentPrice[field]}.`,
+                        );
+                    }
+                }
+
                 // Deduct stock (cannot be negative due to previous check)
                 await tx.product.update({
                     where: { id: product.id },

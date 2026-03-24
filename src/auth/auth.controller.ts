@@ -33,7 +33,7 @@ export class AuthController {
         // Set Access Token
         res.cookie('access_token', tokens.accessToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
+            secure: process.env.COOKIE_SECURE === 'true',
             sameSite: 'lax',
             maxAge: 15 * 60 * 1000, // 15 minutes
         });
@@ -41,7 +41,7 @@ export class AuthController {
         // Set Refresh Token
         res.cookie('refresh_token', tokens.refreshToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
+            secure: process.env.COOKIE_SECURE === 'true',
             sameSite: 'lax',
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         });
@@ -74,7 +74,7 @@ export class AuthController {
         // Set new Access Token
         res.cookie('access_token', tokens.accessToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
+            secure: process.env.COOKIE_SECURE === 'true',
             sameSite: 'lax',
             maxAge: 15 * 60 * 1000, // 15 minutes
         });
@@ -82,7 +82,7 @@ export class AuthController {
         // Set new Refresh Token
         res.cookie('refresh_token', tokens.refreshToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
+            secure: process.env.COOKIE_SECURE === 'true',
             sameSite: 'lax',
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         });
@@ -103,14 +103,14 @@ export class AuthController {
         // Clear access_token cookie
         res.clearCookie('access_token', {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
+            secure: process.env.COOKIE_SECURE === 'true',
             sameSite: 'lax',
         });
 
         // Clear refresh_token cookie
         res.clearCookie('refresh_token', {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
+            secure: process.env.COOKIE_SECURE === 'true',
             sameSite: 'lax',
         });
 

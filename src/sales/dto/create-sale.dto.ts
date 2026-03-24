@@ -1,26 +1,44 @@
 import { Type } from 'class-transformer';
-import { IsString, IsNumber, IsArray, ValidateNested, IsIn } from 'class-validator';
+import {
+    IsString,
+    IsNumber,
+    IsArray,
+    ValidateNested,
+    IsIn,
+    Min,
+    IsInt,
+    IsNotEmpty,
+    IsUUID,
+    ArrayMinSize,
+} from 'class-validator';
 import { PricesDto } from '../../products/dto/create-product.dto';
 
 class PaymentMethodDto {
     @IsNumber()
+    @Min(0, { message: 'El monto en USD físico no puede ser negativo' })
     usdFisico: number;
 
     @IsNumber()
+    @Min(0, { message: 'El monto en USD tarjeta no puede ser negativo' })
     usdTarjeta: number;
 
     @IsNumber()
+    @Min(0, { message: 'El monto en COP no puede ser negativo' })
     cop: number;
 
     @IsNumber()
+    @Min(0, { message: 'El monto en VES no puede ser negativo' })
     ves: number;
 }
 
 class SaleItemDto {
     @IsString()
+    @IsNotEmpty({ message: 'El ID del producto no puede estar vacío' })
+    @IsUUID('4', { message: 'El ID del producto debe ser un UUID válido' })
     productId: string;
 
-    @IsNumber()
+    @IsInt({ message: 'La cantidad debe ser un número entero' })
+    @Min(1, { message: 'La cantidad debe ser al menos 1' })
     quantity: number;
 
     @ValidateNested()
@@ -38,6 +56,7 @@ class SaleItemDto {
 
 export class CreateSaleDto {
     @IsArray()
+    @ArrayMinSize(1, { message: 'Debe incluir al menos un producto en la venta' })
     @ValidateNested({ each: true })
     @Type(() => SaleItemDto)
     items: SaleItemDto[];
