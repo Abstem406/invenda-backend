@@ -94,6 +94,7 @@ model ExchangeRates {
 
 model Sale {
   id             String     @id @default(uuid())
+  customerName   String?
   date           DateTime   @default(now())
   items          SaleItem[]
   receivedTotals Json // type { usdFisico, usdTarjeta, cop, ves }

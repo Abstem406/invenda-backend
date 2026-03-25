@@ -1,11 +1,11 @@
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Patch, Param, Query } from '@nestjs/common';
 import { SalesService } from './sales.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
+import { PaySaleDto } from './dto/pay-sale.dto';
 import { ApiTags, ApiOperation, ApiCookieAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { PaginationDto } from '../common/dto/pagination.dto';
-import { Query } from '@nestjs/common';
 
 @ApiTags('sales')
 @ApiCookieAuth()
@@ -24,5 +24,11 @@ export class SalesController {
     @ApiOperation({ summary: 'Create a new sale record' })
     create(@Body() createSaleDto: CreateSaleDto) {
         return this.salesService.create(createSaleDto);
+    }
+
+    @Patch(':id/pay')
+    @ApiOperation({ summary: 'Add a payment to an existing sale (fiado or debiendo)' })
+    paySale(@Param('id') id: string, @Body() paySaleDto: PaySaleDto) {
+        return this.salesService.paySale(id, paySaleDto);
     }
 }

@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
+import { PaySaleDto } from './dto/pay-sale.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { PaginatedResult } from '../common/interfaces/paginated-result.interface';
 import { Sale, Prisma } from '../../generated/prisma/client';
@@ -44,10 +45,18 @@ export class SalesService {
             // 0. Validate payments: non-fiado sales must have at least one payment > 0
             if (createSaleDto.status !== 'fiado') {
                 const { usdFisico, usdTarjeta, cop, ves } = createSaleDto.receivedTotals;
+                const activePayments = [usdFisico, usdTarjeta, cop, ves].filter(amount => amount > 0);
+                
                 const totalReceived = usdFisico + usdTarjeta + cop + ves;
                 if (totalReceived <= 0) {
                     throw new BadRequestException(
                         'Debe registrar un monto en al menos una divisa. Solo las ventas con estado "fiado" pueden tener montos en 0.',
+                    );
+                }
+
+                if (createSaleDto.status === 'debiendo' && activePayments.length > 1) {
+                    throw new BadRequestException(
+                        'Las ventas fraccionadas (debiendo) solo pueden ser iniciadas utilizando una única moneda de pago.',
                     );
                 }
             }
@@ -120,6 +129,60 @@ export class SalesService {
             });
 
             return newSale;
+        });
+    }
+
+    async paySale(id: string, paySaleDto: PaySaleDto) {
+        return this.prisma.$transaction(async (tx) => {
+            const sale = await tx.sale.findUnique({ where: { id } });
+            if (!sale) {
+                throw new BadRequestException(`La venta no existe.`);
+            }
+
+            if (sale.status === 'pagado') {
+                throw new BadRequestException('Esta venta ya está pagada por completo.');
+            }
+
+            const currentTotals = sale.receivedTotals as { usdFisico: number, usdTarjeta: number, cop: number, ves: number };
+            const { payment, isFullyPaid } = paySaleDto;
+
+            if (sale.status === 'debiendo') {
+                const usedCurrencies = [];
+                if (currentTotals.usdFisico > 0) usedCurrencies.push('usdFisico');
+                if (currentTotals.usdTarjeta > 0) usedCurrencies.push('usdTarjeta');
+                if (currentTotals.cop > 0) usedCurrencies.push('cop');
+                if (currentTotals.ves > 0) usedCurrencies.push('ves');
+
+                const newCurrencies = [];
+                if (payment.usdFisico > 0) newCurrencies.push('usdFisico');
+                if (payment.usdTarjeta > 0) newCurrencies.push('usdTarjeta');
+                if (payment.cop > 0) newCurrencies.push('cop');
+                if (payment.ves > 0) newCurrencies.push('ves');
+
+                for (const currency of newCurrencies) {
+                    if (usedCurrencies.length > 0 && !usedCurrencies.includes(currency)) {
+                        throw new BadRequestException(`Las ventas fraccionadas solo pueden pagarse en las monedas iniciales (${usedCurrencies.join(', ')}). Ha intentado pagar con ${currency}.`);
+                    }
+                }
+            }
+
+            const updatedTotals = {
+                usdFisico: currentTotals.usdFisico + payment.usdFisico,
+                usdTarjeta: currentTotals.usdTarjeta + payment.usdTarjeta,
+                cop: currentTotals.cop + payment.cop,
+                ves: currentTotals.ves + payment.ves,
+            };
+
+            const updatedSale = await tx.sale.update({
+                where: { id },
+                data: {
+                    receivedTotals: updatedTotals,
+                    status: isFullyPaid ? 'pagado' : sale.status,
+                },
+                include: { items: true },
+            });
+
+            return updatedSale;
         });
     }
 }

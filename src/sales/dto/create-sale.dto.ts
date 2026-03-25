@@ -10,6 +10,7 @@ import {
     IsNotEmpty,
     IsUUID,
     ArrayMinSize,
+    IsOptional,
 } from 'class-validator';
 import { PricesDto } from '../../products/dto/create-product.dto';
 
@@ -60,6 +61,10 @@ export class CreateSaleDto {
     @ValidateNested({ each: true })
     @Type(() => SaleItemDto)
     items: SaleItemDto[];
+
+    @IsOptional()
+    @IsString()
+    customerName?: string;
 
     @ValidateNested()
     @Type(() => PaymentMethodDto)
