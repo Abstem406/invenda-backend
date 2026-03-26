@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Patch, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Patch, Param, Query, Req } from '@nestjs/common';
 import { SalesService } from './sales.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
 import { PaySaleDto } from './dto/pay-sale.dto';
@@ -15,15 +15,15 @@ export class SalesController {
     constructor(private readonly salesService: SalesService) { }
 
     @Get()
-    @ApiOperation({ summary: 'Get all sales history with pagination and search (by status)' })
+    @ApiOperation({ summary: 'Get all sales history with pagination, search, date and user filters' })
     findAll(@Query() paginationDto: PaginationDto) {
         return this.salesService.findAll(paginationDto);
     }
 
     @Post()
     @ApiOperation({ summary: 'Create a new sale record' })
-    create(@Body() createSaleDto: CreateSaleDto) {
-        return this.salesService.create(createSaleDto);
+    create(@Req() req: any, @Body() createSaleDto: CreateSaleDto) {
+        return this.salesService.create(createSaleDto, req.user.userId);
     }
 
     @Patch(':id/pay')

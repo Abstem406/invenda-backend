@@ -11,19 +11,44 @@ export class SalesService {
     constructor(private prisma: PrismaService) { }
 
     async findAll(paginationDto: PaginationDto): Promise<PaginatedResult<Sale>> {
-        const { page = 1, limit = 10, search } = paginationDto;
+        const { page = 1, limit = 10, search, dateFrom, dateTo, userId } = paginationDto;
         const skip = (page - 1) * limit;
 
-        const where: Prisma.SaleWhereInput = search
-            ? { status: { contains: search, mode: 'insensitive' } }
-            : {};
+        const where: Prisma.SaleWhereInput = {};
+
+        // Filter by status search
+        if (search) {
+            where.status = { contains: search, mode: 'insensitive' };
+        }
+
+        // Filter by date range
+        if (dateFrom || dateTo) {
+            where.date = {};
+            if (dateFrom) {
+                where.date.gte = new Date(dateFrom);
+            }
+            if (dateTo) {
+                // Set to end of day so the "to" date is inclusive
+                const endDate = new Date(dateTo);
+                endDate.setHours(23, 59, 59, 999);
+                where.date.lte = endDate;
+            }
+        }
+
+        // Filter by userId
+        if (userId) {
+            where.userId = userId;
+        }
 
         const [data, total] = await Promise.all([
             this.prisma.sale.findMany({
                 where,
                 skip,
                 take: limit,
-                include: { items: true },
+                include: {
+                    items: true,
+                    user: { select: { id: true, name: true, email: true } },
+                },
                 orderBy: { date: 'desc' },
             }),
             this.prisma.sale.count({ where }),
@@ -40,9 +65,18 @@ export class SalesService {
         };
     }
 
-    async create(createSaleDto: CreateSaleDto) {
+    async create(createSaleDto: CreateSaleDto, userId: string) {
         return this.prisma.$transaction(async (tx) => {
-            // 0. Validate payments: non-fiado sales must have at least one payment > 0
+            // 0a. Fiado sales: force all payments to zero (safety net)
+            if (createSaleDto.status === 'fiado') {
+                const zeroPay = { usdFisico: 0, usdTarjeta: 0, cop: 0, ves: 0 };
+                createSaleDto.receivedTotals = { ...zeroPay };
+                createSaleDto.items.forEach(item => {
+                    item.payments = { ...zeroPay };
+                });
+            }
+
+            // 0b. Validate payments: non-fiado sales must have at least one payment > 0
             if (createSaleDto.status !== 'fiado') {
                 const { usdFisico, usdTarjeta, cop, ves } = createSaleDto.receivedTotals;
                 const activePayments = [usdFisico, usdTarjeta, cop, ves].filter(amount => amount > 0);
@@ -112,6 +146,7 @@ export class SalesService {
             const newSale = await tx.sale.create({
                 data: {
                     ...saleData,
+                    userId,
                     receivedTotals: saleData.receivedTotals as any,
                     items: {
                         create: items.map(item => ({
@@ -125,6 +160,7 @@ export class SalesService {
                 },
                 include: {
                     items: true,
+                    user: { select: { id: true, name: true, email: true } },
                 },
             });
 

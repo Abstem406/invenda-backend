@@ -21,4 +21,19 @@ export class PaginationDto {
     @IsOptional()
     @IsString()
     search?: string;
+
+    @ApiPropertyOptional({ description: 'Fecha de inicio para filtrar (ISO 8601)' })
+    @IsOptional()
+    @IsString()
+    dateFrom?: string;
+
+    @ApiPropertyOptional({ description: 'Fecha final para filtrar (ISO 8601)' })
+    @IsOptional()
+    @IsString()
+    dateTo?: string;
+
+    @ApiPropertyOptional({ description: 'ID del usuario para filtrar ventas por cajero' })
+    @IsOptional()
+    @IsString()
+    userId?: string;
 }
