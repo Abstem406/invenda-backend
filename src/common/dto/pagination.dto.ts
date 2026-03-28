@@ -36,4 +36,9 @@ export class PaginationDto {
     @IsOptional()
     @IsString()
     userId?: string;
+
+    @ApiPropertyOptional({ description: 'Estado para filtrar ventas' })
+    @IsOptional()
+    @IsString()
+    status?: string;
 }

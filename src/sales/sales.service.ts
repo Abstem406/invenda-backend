@@ -11,14 +11,19 @@ export class SalesService {
     constructor(private prisma: PrismaService) { }
 
     async findAll(paginationDto: PaginationDto): Promise<PaginatedResult<Sale>> {
-        const { page = 1, limit = 10, search, dateFrom, dateTo, userId } = paginationDto;
+        const { page = 1, limit = 10, search, dateFrom, dateTo, userId, status } = paginationDto;
         const skip = (page - 1) * limit;
 
         const where: Prisma.SaleWhereInput = {};
 
-        // Filter by status search
+        // Filter by status
+        if (status) {
+            where.status = status;
+        }
+
+        // Filter by customer name
         if (search) {
-            where.status = { contains: search, mode: 'insensitive' };
+            where.customerName = { contains: search, mode: 'insensitive' };
         }
 
         // Filter by date range
