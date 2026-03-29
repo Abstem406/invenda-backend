@@ -226,4 +226,53 @@ export class SalesService {
             return updatedSale;
         });
     }
+
+    async getProductsSummary(dateFrom?: string, dateTo?: string) {
+        const where: Prisma.SaleWhereInput = {};
+
+        if (dateFrom || dateTo) {
+            where.date = {};
+            if (dateFrom) {
+                where.date.gte = new Date(dateFrom);
+            }
+            if (dateTo) {
+                const endDate = new Date(dateTo);
+                endDate.setHours(23, 59, 59, 999);
+                where.date.lte = endDate;
+            }
+        }
+
+        const aggregations = await this.prisma.saleItem.groupBy({
+            by: ['productId'],
+            _sum: {
+                quantity: true,
+            },
+            where: {
+                sale: where,
+            },
+        });
+
+        const productIds = aggregations.map(agg => agg.productId);
+        const products = await this.prisma.product.findMany({
+            where: { 
+                id: { in: productIds },
+                deletedAt: null // Ignorar productos eliminados lógicamente
+            },
+            select: { id: true, name: true },
+        });
+
+        const productMap = new Map(products.map(p => [p.id, p.name]));
+
+        const results = aggregations
+            .filter(agg => productMap.has(agg.productId)) // Solo incluir productos que no estén eliminados
+            .map(agg => ({
+                productId: agg.productId,
+                name: productMap.get(agg.productId)!,
+                totalSold: agg._sum.quantity || 0,
+            }));
+
+        results.sort((a, b) => b.totalSold - a.totalSold);
+
+        return results;
+    }
 }

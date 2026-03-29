@@ -20,6 +20,12 @@ export class SalesController {
         return this.salesService.findAll(paginationDto);
     }
 
+    @Get('products-summary')
+    @ApiOperation({ summary: 'Get total sales aggregated by product with optional date filters' })
+    getProductsSummary(@Query() paginationDto: PaginationDto) {
+        return this.salesService.getProductsSummary(paginationDto.dateFrom, paginationDto.dateTo);
+    }
+
     @Post()
     @ApiOperation({ summary: 'Create a new sale record' })
     create(@Req() req: any, @Body() createSaleDto: CreateSaleDto) {
