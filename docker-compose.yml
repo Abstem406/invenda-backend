@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  invenda-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: invenda-backend-app
+    ports:
+      - '3000:3000'
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      # Make sure to set DATABASE_URL and other environments in Coolify
+      # - DATABASE_URL=postgresql://user:password@host:5432/db
+    restart: unless-stopped
