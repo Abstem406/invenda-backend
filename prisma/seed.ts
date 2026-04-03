@@ -93,7 +93,7 @@ async function main() {
         }
 
         // ── Mock Sales (Development only) ─────────────────────
-        await seedMockSales();
+        await seedMockSales(cajero.id);
 
         console.log('Seed completed (Development Mode):');
         console.log(`  Users:    Admin (${admin.email}) + Cajero (${cajero.email}) | Password: ${adminPassword}`);
@@ -108,7 +108,7 @@ async function main() {
     }
 }
 
-async function seedMockSales() {
+async function seedMockSales(userId: string) {
     console.log('Seeding mock sales for the last 15 days...');
     const products = await prisma.product.findMany({ include: { price: true } });
     if (products.length === 0) return;
@@ -163,6 +163,7 @@ async function seedMockSales() {
 
             await prisma.sale.create({
                 data: {
+                    userId,
                     date: saleDate,
                     status: 'pagado',
                     receivedTotals: { usdFisico: +(totalUsdFisico).toFixed(2), usdTarjeta: 0, cop: 0, ves: 0 },

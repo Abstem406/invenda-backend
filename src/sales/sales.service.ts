@@ -227,52 +227,78 @@ export class SalesService {
         });
     }
 
-    async getProductsSummary(dateFrom?: string, dateTo?: string) {
-        const where: Prisma.SaleWhereInput = {};
+    async getProductsSummary(paginationDto: PaginationDto) {
+        const { dateFrom, dateTo, search, page = 1, limit = 10, status } = paginationDto;
+        const skip = (page - 1) * limit;
 
-        if (dateFrom || dateTo) {
-            where.date = {};
-            if (dateFrom) {
-                where.date.gte = new Date(dateFrom);
-            }
-            if (dateTo) {
-                const endDate = new Date(dateTo);
-                endDate.setHours(23, 59, 59, 999);
-                where.date.lte = endDate;
-            }
+        const conditions: Prisma.Sql[] = [
+            Prisma.sql`s."deletedAt" IS NULL`,
+            Prisma.sql`si."deletedAt" IS NULL`,
+            Prisma.sql`p."deletedAt" IS NULL`
+        ];
+
+        if (dateFrom) {
+            conditions.push(Prisma.sql`s.date >= ${new Date(dateFrom)}`);
+        }
+        if (dateTo) {
+            const endDate = new Date(dateTo);
+            endDate.setHours(23, 59, 59, 999);
+            conditions.push(Prisma.sql`s.date <= ${endDate}`);
+        }
+        if (status) {
+            conditions.push(Prisma.sql`s.status = ${status}`);
+        }
+        if (search) {
+            conditions.push(Prisma.sql`p.name ILIKE ${'%' + search + '%'}`);
         }
 
-        const aggregations = await this.prisma.saleItem.groupBy({
-            by: ['productId'],
-            _sum: {
-                quantity: true,
-            },
-            where: {
-                sale: where,
-            },
-        });
+        const whereSql = Prisma.join(conditions, ' AND ');
 
-        const productIds = aggregations.map(agg => agg.productId);
-        const products = await this.prisma.product.findMany({
-            where: { 
-                id: { in: productIds },
-                deletedAt: null // Ignorar productos eliminados lógicamente
-            },
-            select: { id: true, name: true },
-        });
+        // Query for total count
+        const countQuery = await this.prisma.$queryRaw<{ count: bigint }[]>`
+            SELECT COUNT(DISTINCT p.id) as count
+            FROM "sale_items" si
+            JOIN "products" p ON si."productId" = p.id
+            JOIN "sales" s ON si."saleId" = s.id
+            WHERE ${whereSql}
+        `;
+        const total = Number(countQuery[0]?.count || 0);
 
-        const productMap = new Map(products.map(p => [p.id, p.name]));
+        // Query for paginated data
+        const summaryQuery = await this.prisma.$queryRaw<any[]>`
+            SELECT 
+                p.id as "productId",
+                p.name,
+                SUM(si.quantity)::int as "totalSold",
+                SUM(COALESCE(CAST(si.payments->>'usdFisico' AS FLOAT), 0)) as "totalUsdFisico",
+                SUM(COALESCE(CAST(si.payments->>'usdTarjeta' AS FLOAT), 0)) as "totalUsdTarjeta",
+                SUM(COALESCE(CAST(si.payments->>'cop' AS FLOAT), 0)) as "totalCop",
+                SUM(COALESCE(CAST(si.payments->>'ves' AS FLOAT), 0)) as "totalVes"
+            FROM "sale_items" si
+            JOIN "products" p ON si."productId" = p.id
+            JOIN "sales" s ON si."saleId" = s.id
+            WHERE ${whereSql}
+            GROUP BY p.id, p.name
+            ORDER BY "totalSold" DESC
+            LIMIT ${limit} OFFSET ${skip}
+        `;
 
-        const results = aggregations
-            .filter(agg => productMap.has(agg.productId)) // Solo incluir productos que no estén eliminados
-            .map(agg => ({
-                productId: agg.productId,
-                name: productMap.get(agg.productId)!,
-                totalSold: agg._sum.quantity || 0,
-            }));
-
-        results.sort((a, b) => b.totalSold - a.totalSold);
-
-        return results;
+        return {
+            data: summaryQuery.map(row => ({
+                productId: row.productId,
+                name: row.name,
+                totalSold: Number(row.totalSold || 0),
+                totalUsdFisico: Number(row.totalUsdFisico || 0),
+                totalUsdTarjeta: Number(row.totalUsdTarjeta || 0),
+                totalCop: Number(row.totalCop || 0),
+                totalVes: Number(row.totalVes || 0)
+            })),
+            meta: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            }
+        };
     }
 }

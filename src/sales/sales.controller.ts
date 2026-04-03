@@ -23,7 +23,7 @@ export class SalesController {
     @Get('products-summary')
     @ApiOperation({ summary: 'Get total sales aggregated by product with optional date filters' })
     getProductsSummary(@Query() paginationDto: PaginationDto) {
-        return this.salesService.getProductsSummary(paginationDto.dateFrom, paginationDto.dateTo);
+        return this.salesService.getProductsSummary(paginationDto);
     }
 
     @Post()
